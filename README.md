@@ -8,7 +8,9 @@ calculation, and vizualization to see decisions the algorithm is making.
 - kde.py will implement kernel regression/density estimation to predict future stock prices
 
 Results:
-- dmac.py achieves very high profits on past data, but this is obviously not very indicative of future profits. Short and long window sizes are chosen as those that maximize profit over all available data (if the strategy were in use since the beginning of the data with the optimal parameters). 
+
+dmac.py:
+Achieves very high profits on past data, but this is obviously not very indicative of future profits. Short and long window sizes are chosen as those that maximize profit over all available data (if the strategy were in use since the beginning of the data with the optimal parameters). 
 
 For example, I have a calculated profit of $1287.42 per share of TSLA since 6/29/2010 using the optimal windows I found (10 days for short and 20 days for long). These optimal windows were calculated using the data since 6/29/2010, so they were found with "future" knowledge that we wouldn't have realistically had back in June of 2010. 
 
