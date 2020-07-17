@@ -31,11 +31,11 @@ def calc_crossovers(sma, lma):
     '''
     num_points = len(clean_data(lma))
     high = (sma > lma)[-num_points:]
-    # print(high)
+    print(high)
     crossovers = high.astype(int).diff()[1:]
-    # print(crossovers)
+    print(crossovers)
     trimmed = crossovers[crossovers != 0]
-    # print(trimmed)
+    print(trimmed)
     return trimmed
 
 def profit(data, crossovers):
@@ -46,7 +46,7 @@ def profit(data, crossovers):
         return 0
     total = 0
     # If first crossover is a sell point assume implicit buy point at very start of data
-    # print(crossovers.iloc[0])
+    print(crossovers.iloc[0])
     if crossovers.iloc[0] == -1:
         total += data.loc[crossovers.index[0]] - data.iloc[0]
     # Add the difference between value at sell points and value at buy points to our profit
@@ -73,8 +73,8 @@ def optimize(data):
 
     # Ranges of initial guesses for short and long periods
     #30 and 40 step size for max accuracy, larger for faster runtime
-    short_seeds = range(5, 300, 40)
-    long_seeds = range(20, 800, 60)
+    short_seeds = range(5, 300, 50)
+    long_seeds = range(20, 800, 70)
     # short_seeds = [100]
     # long_seeds = [750]
     minimum = float('inf')
@@ -100,7 +100,7 @@ def run_analysis(periods, data):
     long_period = int(round(periods[1]))
     sma = data.rolling(short_period).mean()
     lma = data.rolling(long_period).mean()
-    # print(sma, lma)
+    print(sma, lma)
     crossovers = calc_crossovers(sma, lma)
     return -1 * profit(data, crossovers)
 
@@ -129,8 +129,8 @@ def split_year(data):
     split = []
     for year in years:
         split.append(data[data.index.year == year])
-    # print('split')
-    # print(split)
+    print('split')
+    print(split)
     return split
 
 def calc_returns(split_data):
@@ -142,13 +142,12 @@ def calc_returns(split_data):
     min_return = float('inf')
     for i in range(2, len(split_data)):
         test_year = split_data[i]
-        optimize_period = pd.concat(split_data[i-HINDSIGHT:i])
-        # print('optimize period:')
-        # print(optimize_period)
+        optimize_period = pd.DataFrame(np.concatenate(split_data[i-HINDSIGHT:i]))
+        print('optimize period:')
+        print(optimize_period)
         periods = optimize(optimize_period)
-        # print('periods:')
-        # print(periods)
-        visualize(test_year, periods[0], periods[1])
+        print('periods:')
+        print(periods)
         profit = run_analysis(periods, test_year)
         annual_returns.append(profit)
         if profit > max_return: max_return = profit
@@ -159,15 +158,15 @@ def main():
     '''
     Main's current functionality: Find optimal windows for TSLA and print them, along with profit since 6/29/2010
     '''
-    ticker = yf.Ticker('TSLA')
+    ticker = yf.Ticker('MRNA')
     # data = yf.download(tickers, period='max', group_by='ticker')
     data = ticker.history(period="max")
     dirty = pd.DataFrame(data)
     #Currently using only closing prices
     frame = clean_data(dirty)['Close']
     # periods = optimize(frame)
-    # short = frame.rolling(periods[0]).mean()[-15:]
-    # long = frame.rolling(periods[1]).mean()[-15:]
+    # short = frame.rolling(periods[0]).mean()[-10:]
+    # long = frame.rolling(periods[1]).mean()[-10:]
     # print('short ' + str(short) + 'long ' + str(long))
     periods = calc_returns(split_year(frame))
     print(periods)

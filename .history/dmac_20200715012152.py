@@ -73,8 +73,8 @@ def optimize(data):
 
     # Ranges of initial guesses for short and long periods
     #30 and 40 step size for max accuracy, larger for faster runtime
-    short_seeds = range(5, 300, 40)
-    long_seeds = range(20, 800, 60)
+    short_seeds = range(5, 300, 50)
+    long_seeds = range(20, 800, 70)
     # short_seeds = [100]
     # long_seeds = [750]
     minimum = float('inf')
@@ -148,7 +148,6 @@ def calc_returns(split_data):
         periods = optimize(optimize_period)
         # print('periods:')
         # print(periods)
-        visualize(test_year, periods[0], periods[1])
         profit = run_analysis(periods, test_year)
         annual_returns.append(profit)
         if profit > max_return: max_return = profit

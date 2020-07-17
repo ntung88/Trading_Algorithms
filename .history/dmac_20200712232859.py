@@ -31,11 +31,8 @@ def calc_crossovers(sma, lma):
     '''
     num_points = len(clean_data(lma))
     high = (sma > lma)[-num_points:]
-    # print(high)
     crossovers = high.astype(int).diff()[1:]
-    # print(crossovers)
     trimmed = crossovers[crossovers != 0]
-    # print(trimmed)
     return trimmed
 
 def profit(data, crossovers):
@@ -46,7 +43,6 @@ def profit(data, crossovers):
         return 0
     total = 0
     # If first crossover is a sell point assume implicit buy point at very start of data
-    # print(crossovers.iloc[0])
     if crossovers.iloc[0] == -1:
         total += data.loc[crossovers.index[0]] - data.iloc[0]
     # Add the difference between value at sell points and value at buy points to our profit
@@ -72,9 +68,8 @@ def optimize(data):
     {'type': 'ineq', 'fun': lambda x: x[0] - 5})
 
     # Ranges of initial guesses for short and long periods
-    #30 and 40 step size for max accuracy, larger for faster runtime
-    short_seeds = range(5, 300, 40)
-    long_seeds = range(20, 800, 60)
+    short_seeds = range(5, 300, 50)
+    long_seeds = range(20, 800, 70)
     # short_seeds = [100]
     # long_seeds = [750]
     minimum = float('inf')
@@ -84,7 +79,7 @@ def optimize(data):
         for long_seed in long_seeds:
             # Use all combinations of ranges where long_seed > short_seed as initial guesses
             if long_seed > short_seed:
-                res = minimize(run_analysis, [short_seed, long_seed], args=(data,), method='COBYLA', constraints=cons, options={'rhobeg': 10.0, 'catol': 0.0})
+                res = minimize(lambda x, data: -1 * run_analysis(x, data), [short_seed, long_seed], args=(data,), method='COBYLA', constraints=cons, options={'rhobeg': 10.0, 'catol': 0.0})
                 if res.fun < minimum:
                     best_short = res.x[0]
                     best_long = res.x[1]
@@ -100,9 +95,8 @@ def run_analysis(periods, data):
     long_period = int(round(periods[1]))
     sma = data.rolling(short_period).mean()
     lma = data.rolling(long_period).mean()
-    # print(sma, lma)
     crossovers = calc_crossovers(sma, lma)
-    return -1 * profit(data, crossovers)
+    return profit(data, crossovers)
 
 def visualize(data, short_period, long_period):
     '''
@@ -129,8 +123,6 @@ def split_year(data):
     split = []
     for year in years:
         split.append(data[data.index.year == year])
-    # print('split')
-    # print(split)
     return split
 
 def calc_returns(split_data):
@@ -142,37 +134,29 @@ def calc_returns(split_data):
     min_return = float('inf')
     for i in range(2, len(split_data)):
         test_year = split_data[i]
-        optimize_period = pd.concat(split_data[i-HINDSIGHT:i])
-        # print('optimize period:')
-        # print(optimize_period)
+        optimize_period = pd.Dataframe(np.concatenate(split_data[i-HINDSIGHT:i]))
         periods = optimize(optimize_period)
-        # print('periods:')
-        # print(periods)
-        visualize(test_year, periods[0], periods[1])
         profit = run_analysis(periods, test_year)
         annual_returns.append(profit)
         if profit > max_return: max_return = profit
         if profit < min_return: min_return = profit
     return annual_returns, max_return, min_return
 
+
 def main():
     '''
     Main's current functionality: Find optimal windows for TSLA and print them, along with profit since 6/29/2010
     '''
-    ticker = yf.Ticker('TSLA')
+    ticker = yf.Ticker('PSV')
     # data = yf.download(tickers, period='max', group_by='ticker')
     data = ticker.history(period="max")
     dirty = pd.DataFrame(data)
     #Currently using only closing prices
     frame = clean_data(dirty)['Close']
+    # split_year(frame)
     # periods = optimize(frame)
-    # short = frame.rolling(periods[0]).mean()[-15:]
-    # long = frame.rolling(periods[1]).mean()[-15:]
-    # print('short ' + str(short) + 'long ' + str(long))
-    periods = calc_returns(split_year(frame))
-    print(periods)
-
-
+    results = calc_returns(split_year(frame))
+    print(results)
 
     # visualize(frame, periods[0], periods[1])
 

@@ -1,5 +1,6 @@
 import yfinance as yf
 import numpy as np
+from scipy.stats import norm
 import pandas as pd
 from pandasgui import show
 from scipy.optimize import minimize
@@ -9,8 +10,6 @@ import matplotlib.pyplot as plt
 A library for running Dual Moving Average Crossover trading strategy, with backtesting, 
 period optimization, and vizualization tools.
 '''
-#Period of time (in years) that we look back when optimizing in return calculation
-HINDSIGHT = 2
 
 def clean_data(data):
     ''' 
@@ -31,11 +30,8 @@ def calc_crossovers(sma, lma):
     '''
     num_points = len(clean_data(lma))
     high = (sma > lma)[-num_points:]
-    # print(high)
     crossovers = high.astype(int).diff()[1:]
-    # print(crossovers)
     trimmed = crossovers[crossovers != 0]
-    # print(trimmed)
     return trimmed
 
 def profit(data, crossovers):
@@ -46,7 +42,6 @@ def profit(data, crossovers):
         return 0
     total = 0
     # If first crossover is a sell point assume implicit buy point at very start of data
-    # print(crossovers.iloc[0])
     if crossovers.iloc[0] == -1:
         total += data.loc[crossovers.index[0]] - data.iloc[0]
     # Add the difference between value at sell points and value at buy points to our profit
@@ -72,9 +67,8 @@ def optimize(data):
     {'type': 'ineq', 'fun': lambda x: x[0] - 5})
 
     # Ranges of initial guesses for short and long periods
-    #30 and 40 step size for max accuracy, larger for faster runtime
-    short_seeds = range(5, 300, 40)
-    long_seeds = range(20, 800, 60)
+    short_seeds = range(5, 300, 30)
+    long_seeds = range(20, 800, 40)
     # short_seeds = [100]
     # long_seeds = [750]
     minimum = float('inf')
@@ -100,9 +94,9 @@ def run_analysis(periods, data):
     long_period = int(round(periods[1]))
     sma = data.rolling(short_period).mean()
     lma = data.rolling(long_period).mean()
-    # print(sma, lma)
     crossovers = calc_crossovers(sma, lma)
-    return -1 * profit(data, crossovers)
+    result = -1 * profit(data, crossovers)
+    return result
 
 def visualize(data, short_period, long_period):
     '''
@@ -121,64 +115,17 @@ def visualize(data, short_period, long_period):
         plt.axvline(sell, color="red")
     plt.show()
 
-def split_year(data):
-    '''
-    Split dataframe into a list of dataframes, each corresponding to the data for each year
-    '''
-    years = np.unique(data.index.year)
-    split = []
-    for year in years:
-        split.append(data[data.index.year == year])
-    # print('split')
-    # print(split)
-    return split
-
-def calc_returns(split_data):
-    '''
-    Calculate annual returns for periods optimized over slices (of size HINDSIGHT) of past data. Gives an idea of what kind of results to realistically expect
-    '''
-    annual_returns = []
-    max_return = float('-inf')
-    min_return = float('inf')
-    for i in range(2, len(split_data)):
-        test_year = split_data[i]
-        optimize_period = pd.concat(split_data[i-HINDSIGHT:i])
-        # print('optimize period:')
-        # print(optimize_period)
-        periods = optimize(optimize_period)
-        # print('periods:')
-        # print(periods)
-        visualize(test_year, periods[0], periods[1])
-        profit = run_analysis(periods, test_year)
-        annual_returns.append(profit)
-        if profit > max_return: max_return = profit
-        if profit < min_return: min_return = profit
-    return annual_returns, max_return, min_return
-
 def main():
-    '''
-    Main's current functionality: Find optimal windows for TSLA and print them, along with profit since 6/29/2010
-    '''
-    ticker = yf.Ticker('TSLA')
-    # data = yf.download(tickers, period='max', group_by='ticker')
-    data = ticker.history(period="max")
-    dirty = pd.DataFrame(data)
+    tickers = 'TSLA SPY'
+    data = yf.download(tickers, period='max', group_by='ticker')
+    dirty = pd.DataFrame(data['TSLA'])
     #Currently using only closing prices
     frame = clean_data(dirty)['Close']
-    # periods = optimize(frame)
-    # short = frame.rolling(periods[0]).mean()[-15:]
-    # long = frame.rolling(periods[1]).mean()[-15:]
-    # print('short ' + str(short) + 'long ' + str(long))
-    periods = calc_returns(split_year(frame))
+
+    periods = optimize(frame)
     print(periods)
 
-
-
-    # visualize(frame, periods[0], periods[1])
+    # visualize(frame['2019-01-02':], periods[0], periods[1])
 
 if __name__ == "__main__":
     main()
-
-'''
-how to quantify number of shares you want to buy (steepness of trend, volatility, top 20 stocks?)
-'''
